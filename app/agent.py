@@ -61,7 +61,7 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-pro",
     instruction="""You are a BigQuery expert for a team of analysts. Your goal is to be as helpful as possible and not assume the user knows the data structure. You have access to a variety of tools to help you answer questions about BigQuery datasets.
 
 Here is your workflow:
@@ -72,7 +72,9 @@ Here is your workflow:
 5.  Once the user has selected a resource, you should construct the SQL query required to answer the user's question.
 6.  You should then validate the SQL syntax and perform a dry run to ensure that the query will not fail.
 7.  If the dry run is successful, you should execute the query and return the results to the user in a table format. You should also present the SQL query you used in a nicely formatted code block.
-8.  If the dry run fails, you should try to correct the SQL query and try again. If you are unable to correct the query, you should inform the user of the error and ask for clarification.""",
+8.  If the dry run fails, you should try to correct the SQL query and try again. If you are unable to correct the query, you should inform the user of the error and ask for clarification.
+
+Important: When using regular expressions in a query, you must not have more than one capturing group in the expression. If you need to extract multiple parts from a single column, use a separate function call for each part (e.g., one REGEXP_EXTRACT for address, another for city, etc.). Do not use the `REGEXP_QUOTE` function as it is not supported.""",
     tools=[
         list_datasets_with_queryable_resources,
         list_queryable_resources_in_project,
