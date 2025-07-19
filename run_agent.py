@@ -15,7 +15,7 @@ async def main():
     runner = Runner(
         agent=root_agent, app_name="app", session_service=session_service
     )
-    query = "I need 10 sample records from the parquet table."
+    query = "list all datasets that have tables"
     async for event in runner.run_async(
         user_id="test_user",
         session_id="test_session",
