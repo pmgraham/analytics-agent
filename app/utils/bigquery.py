@@ -91,27 +91,27 @@ def list_datasets() -> list[str]:
     datasets = list(client.list_datasets())
     return [dataset.dataset_id for dataset in datasets]
 
-def list_all_tables_in_project() -> list[str]:
-    """Lists all tables in the project, formatted as `dataset.table`."""
+def list_queryable_resources_in_project() -> list[str]:
+    """Lists all queryable resources (tables, views, materialized views) in the project, formatted as `dataset.resource`."""
     client = get_client()
     datasets = list(client.list_datasets())
-    all_tables = []
+    all_resources = []
     for dataset in datasets:
         tables = client.list_tables(dataset.dataset_id)
         for table in tables:
-            all_tables.append(f"{dataset.dataset_id}.{table.table_id}")
-    return all_tables
+            all_resources.append(f"{dataset.dataset_id}.{table.table_id}")
+    return all_resources
 
-def list_datasets_with_tables() -> list[str]:
-    """Lists all datasets in the project that contain at least one table."""
+def list_datasets_with_queryable_resources() -> list[str]:
+    """Lists all datasets in the project that contain at least one queryable resource (table, view, or materialized view)."""
     client = get_client()
     datasets = list(client.list_datasets())
-    datasets_with_tables = []
+    datasets_with_resources = []
     for dataset in datasets:
         tables = list(client.list_tables(dataset.dataset_id))
         if tables:
-            datasets_with_tables.append(dataset.dataset_id)
-    return datasets_with_tables
+            datasets_with_resources.append(dataset.dataset_id)
+    return datasets_with_resources
 
 def find_column_in_tables(dataset_id: str, column_name: str) -> list[str]:
     """Finds tables in a dataset that contain a specific column.
