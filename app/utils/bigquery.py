@@ -91,6 +91,17 @@ def list_datasets() -> list[str]:
     datasets = list(client.list_datasets())
     return [dataset.dataset_id for dataset in datasets]
 
+def list_all_tables_in_project() -> list[str]:
+    """Lists all tables in the project, formatted as `dataset.table`."""
+    client = get_client()
+    datasets = list(client.list_datasets())
+    all_tables = []
+    for dataset in datasets:
+        tables = client.list_tables(dataset.dataset_id)
+        for table in tables:
+            all_tables.append(f"{dataset.dataset_id}.{table.table_id}")
+    return all_tables
+
 def find_column_in_tables(dataset_id: str, column_name: str) -> list[str]:
     """Finds tables in a dataset that contain a specific column.
 
