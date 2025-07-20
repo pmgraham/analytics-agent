@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import os
+import logging
 
 import google.auth
 from google.cloud import bigquery
+
+logger = logging.getLogger(__name__)
 
 _, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
@@ -35,9 +38,12 @@ def list_tables(dataset_id: str) -> list[str]:
     Returns:
         A list of table IDs in the dataset.
     """
+    logger.info(f"Calling list_tables with dataset_id: {dataset_id}")
     client = get_client()
     tables = client.list_tables(dataset_id)
-    return [table.table_id for table in tables]
+    result = [table.table_id for table in tables]
+    logger.info(f"list_tables returned: {result}")
+    return result
 
 
 def get_table_schema(dataset_id: str, table_id: str) -> dict:
@@ -50,10 +56,13 @@ def get_table_schema(dataset_id: str, table_id: str) -> dict:
     Returns:
         A dictionary representing the table schema.
     """
+    logger.info(f"Calling get_table_schema with dataset_id: {dataset_id}, table_id: {table_id}")
     client = get_client()
     table_ref = client.dataset(dataset_id).table(table_id)
     table = client.get_table(table_ref)
-    return [{"name": field.name, "type": field.field_type, "mode": field.mode} for field in table.schema]
+    result = [{"name": field.name, "type": field.field_type, "mode": field.mode} for field in table.schema]
+    logger.info(f"get_table_schema returned: {result}")
+    return result
 
 
 def execute_query(query: str) -> list[dict]:
@@ -65,10 +74,13 @@ def execute_query(query: str) -> list[dict]:
     Returns:
         A list of dictionaries representing the query results.
     """
+    logger.info(f"Calling execute_query with query: {query}")
     client = get_client()
     query_job = client.query(query)
     results = query_job.result()
-    return [dict(row) for row in results]
+    result = [dict(row) for row in results]
+    logger.info(f"execute_query returned: {result}")
+    return result
 
 
 def dry_run_query(query: str) -> dict:
@@ -80,19 +92,26 @@ def dry_run_query(query: str) -> dict:
     Returns:
         A dictionary containing the query status and the estimated bytes to be processed.
     """
+    logger.info(f"Calling dry_run_query with query: {query}")
     client = get_client()
     job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
     query_job = client.query(query, job_config=job_config)
-    return {"status": query_job.state, "total_bytes_processed": query_job.total_bytes_processed}
+    result = {"status": query_job.state, "total_bytes_processed": query_job.total_bytes_processed}
+    logger.info(f"dry_run_query returned: {result}")
+    return result
 
 def list_datasets() -> list[str]:
     """Lists all datasets in the project."""
+    logger.info("Calling list_datasets")
     client = get_client()
     datasets = list(client.list_datasets())
-    return [dataset.dataset_id for dataset in datasets]
+    result = [dataset.dataset_id for dataset in datasets]
+    logger.info(f"list_datasets returned: {result}")
+    return result
 
 def list_queryable_resources_in_project() -> list[str]:
     """Lists all queryable resources (tables, views, materialized views) in the project, formatted as `dataset.resource`."""
+    logger.info("Calling list_queryable_resources_in_project")
     client = get_client()
     datasets = list(client.list_datasets())
     all_resources = []
@@ -100,10 +119,12 @@ def list_queryable_resources_in_project() -> list[str]:
         tables = client.list_tables(dataset.dataset_id)
         for table in tables:
             all_resources.append(f"{dataset.dataset_id}.{table.table_id}")
+    logger.info(f"list_queryable_resources_in_project returned: {all_resources}")
     return all_resources
 
 def list_datasets_with_queryable_resources() -> list[str]:
     """Lists all datasets in the project that contain at least one queryable resource (table, view, or materialized view)."""
+    logger.info("Calling list_datasets_with_queryable_resources")
     client = get_client()
     datasets = list(client.list_datasets())
     datasets_with_resources = []
@@ -111,6 +132,7 @@ def list_datasets_with_queryable_resources() -> list[str]:
         tables = list(client.list_tables(dataset.dataset_id))
         if tables:
             datasets_with_resources.append(dataset.dataset_id)
+    logger.info(f"list_datasets_with_queryable_resources returned: {datasets_with_resources}")
     return datasets_with_resources
 
 def find_column_in_tables(dataset_id: str, column_name: str) -> list[str]:
@@ -123,6 +145,7 @@ def find_column_in_tables(dataset_id: str, column_name: str) -> list[str]:
     Returns:
         A list of table IDs that contain the specified column.
     """
+    logger.info(f"Calling find_column_in_tables with dataset_id: {dataset_id}, column_name: {column_name}")
     client = get_client()
     tables = client.list_tables(dataset_id)
     tables_with_column = []
@@ -133,4 +156,5 @@ def find_column_in_tables(dataset_id: str, column_name: str) -> list[str]:
             if field.name.lower() == column_name.lower():
                 tables_with_column.append(table.table_id)
                 break
+    logger.info(f"find_column_in_tables returned: {tables_with_column}")
     return tables_with_column

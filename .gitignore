@@ -3,10 +3,6 @@ __pycache__/
 *.py[cod]
 *.pyc
 *$py.class
-**/dist
-/tmp
-/out-tsc
-/bazel-out
 
 # C extensions
 *.so
@@ -145,7 +141,6 @@ dmypy.json
 .terraform*
 .Terraform*
 
-
 tmp*
 
 # Node
@@ -195,3 +190,6 @@ my_env.tfvars
 .saved_chats
 .env
 .requirements.txt
+
+# Local database file
+sessions.db
