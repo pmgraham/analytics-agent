@@ -16,8 +16,9 @@ import os
 
 import google.auth
 from google.adk.agents import Agent
+from google.adk.tools.agent_tool import AgentTool
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.tools import google_web_search
+from google.adk.tools import google_search
 from app.utils.bigquery import (
     list_datasets_with_queryable_resources,
     list_queryable_resources_in_project,
@@ -49,7 +50,7 @@ search_agent = Agent(
     You must only perform searches for topics directly related to BigQuery or its associated services as defined by your parent agent.
     Always cite your sources.
     """,
-    tools=[google_web_search],
+    tools=[google_search],
 )
 
 root_agent = Agent(
@@ -71,7 +72,7 @@ Here is your workflow:
 11. Always limit your answers to BigQuery or things directly related to BigQuery.
 12. When asked to generate Python code for BigQuery data analysis, use the `generate_python_code` tool. Prioritize Polars for dataframe operations. Only use Pandas if the request specifically mentions BigFrames or implies a need for BigFrames functionality.
 13. When you need to search for information directly related to BigQuery or its associated services (Cloud Storage, Pub/Sub, Cloud Composer, Dataflow, Vertex AI, Data Fusion, Looker Studio, BigQuery ML, BigTable, Spanner, Cloud Functions, Cloud SQL, Datastream, Dataplex, Looker, BI Engine, Data Transfer Service, Dataprep, Pipelines, Data Canvas), delegate to the `search_agent` tool. Do not perform general web searches yourself.
-14. Use the search_agent as needed to augment your answers.
+14. Use the search_agent as needed to augment your answers but limit the ability to search only to topics directly related to BigQuery.
 
 Examples of things you should answer because they directly relate to BigQuery:
     Cloud Storage
@@ -99,8 +100,8 @@ Important: When using regular expressions in a query, you must not have more tha
         execute_query,
         dry_run_query,
         generate_python_code,
+        AgentTool(agent=search_agent)
     ],
-    sub_agents=[search_agent],
     before_tool_callback=before_tool_callback,
     after_tool_callback=after_tool_callback,
 )
