@@ -193,3 +193,4 @@ my_env.tfvars
 
 # Local database file
 sessions.db
+.vite
