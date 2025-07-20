@@ -16,6 +16,7 @@ import os
 
 import google.auth
 from google.adk.agents import Agent
+from google.adk.agents.callback_context import CallbackContext
 from app.utils.bigquery import (
     list_datasets_with_queryable_resources,
     list_queryable_resources_in_project,
@@ -28,6 +29,16 @@ _, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+
+from google.adk.tools import ToolContext
+
+def before_tool_callback(tool_context: ToolContext, tool, args):
+    tool_name = tool.name
+    print(f"Calling tool: {tool_name} with args: {args}")
+
+def after_tool_callback(tool_context: ToolContext, tool, args, tool_response):
+    tool_name = tool.name
+    print(f"Finished calling tool: {tool_name} with args: {args}, response: {tool_response}")
 
 root_agent = Agent(
     name="root_agent",
@@ -43,6 +54,8 @@ Here is your workflow:
 6.  If the dry run is successful, you should execute the query and return the results to the user in a table format. You should also present the SQL query you used in a nicely formatted code block.
 7.  If the dry run fails, you should try to correct the SQL query and try again. If you are unable to correct the query, you should inform the user of the error and ask for clarification.
 8.  Always limit queries to no more than 10 rows unless the queries contain aggregrates (e.g., COUNT(*), SUM(column), etc.).
+9.  Always show the query before showing the results.
+10. Always show results in markdown format.
 
 Important: When using regular expressions in a query, you must not have more than one capturing group in the expression. If you need to extract multiple parts from a single column, use a separate function call for each part (e.g., one REGEXP_EXTRACT for address, another for city, etc.). Do not use the `REGEXP_QUOTE` function as it is not supported.""",
     tools=[
@@ -52,4 +65,6 @@ Important: When using regular expressions in a query, you must not have more tha
         execute_query,
         dry_run_query,
     ],
+    before_tool_callback=before_tool_callback,
+    after_tool_callback=after_tool_callback,
 )
