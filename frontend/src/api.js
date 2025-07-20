@@ -47,7 +47,7 @@ export async function* sendMessageToApi(message, appName, userId, sessionId) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let result = '';
-    let finalResponse = '';
+    
 
     while (true) {
       const { done, value } = await reader.read();
@@ -86,7 +86,6 @@ export async function* sendMessageToApi(message, appName, userId, sessionId) {
                 const textPart = data.content.parts[0].text;
                 // console.log('textPart:', textPart); // Log textPart
                 if (textPart) {
-                  finalResponse += textPart;
                   yield { type: 'text', content: textPart };
                 }
               }
@@ -97,7 +96,7 @@ export async function* sendMessageToApi(message, appName, userId, sessionId) {
         }
       }
     }
-    return finalResponse;
+    // No final return value needed for a generator
   } catch (error) {
     console.error('API Error:', error);
     throw error;

@@ -1,27 +1,48 @@
 <template>
-  <div class="chat-container">
-    <div class="messages">
-      <div v-for="(message, index) in messages" :key="index" :class="['message', message.sender]">
-        <div v-html="renderMarkdown(message.text)"></div>
+  <div class="combined-container">
+    <div class="editor-panel">
+      <div class="editor-wrapper">
+        <div class="line-numbers" ref="lineNumbersRef">
+          <span v-for="n in lineNumbers" :key="n">{{ n }}</span>
+        </div>
+        <textarea
+          ref="editorRef"
+          v-model="editorContent"
+          placeholder="Write your code or text here..."
+          @input="updateLineNumbers"
+          @scroll="handleScroll"
+        ></textarea>
       </div>
-      <div v-if="isLoading" class="message bot loading">
-        {{ currentStatus }}
-      </div>
+      <button @click="insertIntoChat" class="insert-button">Insert into Chat</button>
     </div>
-    <div class="input-area">
-      <input
-        v-model="newMessage"
-        @keyup.enter="sendMessage"
-        placeholder="Type your message..."
-        :disabled="isLoading"
-      />
-      <button @click="sendMessage" :disabled="isLoading">Send</button>
+
+    <div class="chat-panel">
+      <div class="messages" ref="messagesContainer">
+        <div v-for="(message, index) in messages" :key="index" :class="['message', message.sender]">
+          <div v-html="renderMarkdown(message.text)"></div>
+        </div>
+        <div v-if="isLoading" class="message bot loading">
+          {{ currentStatus }}
+        </div>
+        <div v-if="isLoading && currentStreamingMessage" class="message bot streaming-message">
+          <div v-html="renderMarkdown(currentStreamingMessage)"></div>
+        </div>
+      </div>
+      <div class="input-area">
+        <input
+          v-model="newMessage"
+          @keyup.enter="sendMessage"
+          placeholder="Type your message..."
+          :disabled="isLoading"
+        />
+        <button @click="sendMessage" :disabled="isLoading" class="insert-button">Send</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import { sendMessageToApi, createSession } from '../api';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
@@ -47,12 +68,64 @@ const messages = ref([]);
 const newMessage = ref('');
 const isLoading = ref(false);
 const currentStatus = ref('Typing...'); // New ref for agent status
+const currentStreamingMessage = ref(''); // New ref for streaming message
 const currentSessionId = ref(null);
 const appName = "agent"; // Define appName
 const userId = "default-user"; // Define userId
 
+// Text Editor Refs and Logic
+const editorContent = ref('');
+const editorRef = ref(null); // Ref for the textarea element
+const lineNumbersRef = ref(null); // Ref for the line numbers div
+
+const lineNumbers = computed(() => {
+  const lines = editorContent.value.split('\n');
+  return Array.from({ length: lines.length }, (_, i) => i + 1);
+});
+
+const updateLineNumbers = () => {
+  nextTick(() => {
+    handleScroll();
+  });
+};
+
+const handleScroll = () => {
+  if (editorRef.value && lineNumbersRef.value) {
+    lineNumbersRef.value.scrollTop = editorRef.value.scrollTop;
+  }
+};
+
+watch(editorContent, () => {
+  updateLineNumbers();
+});
+
+const insertIntoChat = () => {
+  const textarea = editorRef.value;
+  let contentToInsert = editorContent.value;
+
+  if (textarea && textarea.selectionStart !== textarea.selectionEnd) {
+    contentToInsert = editorContent.value.substring(textarea.selectionStart, textarea.selectionEnd);
+  }
+  
+  newMessage.value = contentToInsert; // Insert into chat input
+};
+
+// Chat Logic
 const renderMarkdown = (text) => {
-  return marked.parse(text);
+  let processedText = text.replace(/```(\w*)\s*([\s\S]*?)```/g, (match, lang, code) => {
+    return '```' + lang + '\n' + code.trim() + '\n```';
+  });
+  return marked.parse(processedText);
+};
+
+const messagesContainer = ref(null);
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }
+  });
 };
 
 onMounted(async () => {
@@ -73,42 +146,105 @@ const sendMessage = async () => {
   }
 
   messages.value.push({ text: newMessage.value, sender: 'user' });
+  scrollToBottom(); // Scroll down after user sends message
   const userMessage = newMessage.value;
   newMessage.value = '';
 
   isLoading.value = true;
   currentStatus.value = 'Typing...'; // Initial status
-  let fullResponse = '';
+  currentStreamingMessage.value = ''; // Clear previous streaming message
 
   try {
     for await (const chunk of sendMessageToApi(userMessage, appName, userId, currentSessionId.value)) {
       if (chunk.type === 'status') {
         currentStatus.value = chunk.message;
       } else if (chunk.type === 'text') {
-        fullResponse += chunk.content;
-        // Optionally update the last message in real-time if needed
-        // For now, we'll just accumulate and add once at the end
+        for (let i = 0; i < chunk.content.length; i++) {
+          currentStreamingMessage.value += chunk.content[i];
+          scrollToBottom();
+          await new Promise(resolve => setTimeout(resolve, 10)); // Small delay for typing effect
+        }
       }
     }
-    messages.value.push({ text: fullResponse, sender: 'bot' });
   } catch (error) {
     console.error('Error sending message:', error);
     messages.value.push({ text: 'Error: Could not get a response.', sender: 'bot' });
   } finally {
     isLoading.value = false;
+    if (currentStreamingMessage.value) {
+      messages.value.push({ text: currentStreamingMessage.value, sender: 'bot' });
+    }
     currentStatus.value = ''; // Clear status after response
+    currentStreamingMessage.value = ''; // Clear streaming message after response
+    scrollToBottom(); // Scroll one last time after response is complete
   }
 };
 </script>
 
 <style scoped>
-.chat-container {
+.combined-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.editor-panel {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  padding: 10px;
+  border-right: 1px solid #ccc;
+  width: 40%; /* Adjust as needed */
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.editor-wrapper {
+  display: flex;
+  flex-grow: 1;
+  margin-bottom: 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden; /* Ensures line numbers and textarea stay within bounds */
+}
+
+.line-numbers {
+  background-color: #f0f0f0;
+  padding: 10px 5px;
+  text-align: right;
+  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: #888;
+  user-select: none; /* Prevent selection of line numbers */
+  overflow-y: hidden; /* Hide scrollbar, synchronized with textarea */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.line-numbers span {
+  display: block;
+}
+
+textarea {
+  flex-grow: 1;
+  padding: 10px;
+  border: none; /* Remove individual border, wrapper handles it */
+  border-radius: 0; /* Remove individual border-radius */
+  outline: none;
+  resize: none; /* Prevent manual resizing */
+  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  line-height: 1.4;
+  white-space: pre; /* Preserve whitespace for alignment */
+  overflow-y: auto; /* Allow textarea to scroll */
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  height: 100%;
   max-width: 1000px; /* Increased max-width */
   margin: 0 auto;
-  border: 1px solid #ccc;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -158,20 +294,35 @@ const sendMessage = async () => {
   outline: none;
 }
 
-.input-area button {
+.insert-button {
   padding: 10px 20px;
-  background-color: #28a745;
-  color: white;
+  background-color: #007bff; /* Blue background */
+  color: white; /* White font */
   border: none;
   border-radius: 20px;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
+.insert-button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
 .message.bot.loading {
   background-color: #f0f0f0;
   color: #666;
   font-style: italic;
+}
+
+.message.bot.streaming-message {
+  background-color: #e2e2e2;
+  color: #333;
+  margin-right: auto;
+  border-radius: 15px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  max-width: 90%;
+  word-wrap: break-word;
 }
 
 /* Styles for markdown rendering */
@@ -197,8 +348,11 @@ const sendMessage = async () => {
   padding: 10px;
   border-radius: 5px;
   overflow-x: auto;
+  overflow-y: auto; /* Add vertical scroll for long code blocks */
+  max-height: 300px; /* Limit height of code blocks */
   white-space: pre-wrap; /* Ensures long lines wrap */
   word-wrap: break-word; /* Ensures long words break */
+  overflow-wrap: break-word; /* Newer alternative to word-wrap */
 }
 
 .message div :deep(code) {
