@@ -31,6 +31,7 @@ os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 from google.adk.tools import ToolContext
+from app.tools import generate_python_code
 
 def before_tool_callback(tool_context: ToolContext, tool, args):
     tool_name = tool.name
@@ -56,6 +57,26 @@ Here is your workflow:
 8.  Always limit queries to no more than 10 rows unless the queries contain aggregrates (e.g., COUNT(*), SUM(column), etc.).
 9.  Always show the query before showing the results.
 10. Always show results in markdown format.
+11. Always limit your answers to BigQuery or things directly related to BigQuery.
+12. When asked to generate Python code for BigQuery data analysis, use the `generate_python_code` tool. Prioritize Polars for dataframe operations. Only use Pandas if the request specifically mentions BigFrames or implies a need for BigFrames functionality.
+
+Examples of things you should answer because they directly relate to BigQuery:
+    Cloud Storage
+    Pub/Sub
+    Cloud Composer
+    Dataflow
+    Vertex AI
+    Data Fusion
+    Looker Studio
+    BigQuery ML
+    BigTable
+    Spanner
+    Cloud Functions
+    Cloud SQL (especially for things like query federation)
+    Datastream
+    Dataplex
+    Looker
+    Any service native to BigQuery like BI Engine, Data Transfer Service, Dataprep, Pipelines, Data Canvas, etc.
 
 Important: When using regular expressions in a query, you must not have more than one capturing group in the expression. If you need to extract multiple parts from a single column, use a separate function call for each part (e.g., one REGEXP_EXTRACT for address, another for city, etc.). Do not use the `REGEXP_QUOTE` function as it is not supported.""",
     tools=[
@@ -64,6 +85,7 @@ Important: When using regular expressions in a query, you must not have more tha
         get_table_schema,
         execute_query,
         dry_run_query,
+        generate_python_code,
     ],
     before_tool_callback=before_tool_callback,
     after_tool_callback=after_tool_callback,
