@@ -1,5 +1,6 @@
 from google.adk.tools import ToolContext
 
+
 def generate_python_code(description: str, tool_context: ToolContext) -> str:
     """Generates Python code for BigQuery data analysis, prioritizing Polars for dataframes.
     Use this tool when the user asks for Python code examples related to BigQuery data.

@@ -17,6 +17,7 @@ import os
 import google.auth
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.tools import google_web_search
 from app.utils.bigquery import (
     list_datasets_with_queryable_resources,
     list_queryable_resources_in_project,
@@ -41,6 +42,16 @@ def after_tool_callback(tool_context: ToolContext, tool, args, tool_response):
     tool_name = tool.name
     print(f"Finished calling tool: {tool_name} with args: {args}, response: {tool_response}")
 
+search_agent = Agent(
+    name="search_agent",
+    model="gemini-2.5-pro",
+    instruction="""You are a specialized search agent. Your sole purpose is to perform Google web searches when explicitly requested by your parent agent.
+    You must only perform searches for topics directly related to BigQuery or its associated services as defined by your parent agent.
+    Always cite your sources.
+    """,
+    tools=[google_web_search],
+)
+
 root_agent = Agent(
     name="root_agent",
     model="gemini-2.5-pro",
@@ -59,6 +70,8 @@ Here is your workflow:
 10. Always show results in markdown format.
 11. Always limit your answers to BigQuery or things directly related to BigQuery.
 12. When asked to generate Python code for BigQuery data analysis, use the `generate_python_code` tool. Prioritize Polars for dataframe operations. Only use Pandas if the request specifically mentions BigFrames or implies a need for BigFrames functionality.
+13. When you need to search for information directly related to BigQuery or its associated services (Cloud Storage, Pub/Sub, Cloud Composer, Dataflow, Vertex AI, Data Fusion, Looker Studio, BigQuery ML, BigTable, Spanner, Cloud Functions, Cloud SQL, Datastream, Dataplex, Looker, BI Engine, Data Transfer Service, Dataprep, Pipelines, Data Canvas), delegate to the `search_agent` tool. Do not perform general web searches yourself.
+14. Use the search_agent as needed to augment your answers.
 
 Examples of things you should answer because they directly relate to BigQuery:
     Cloud Storage
@@ -87,6 +100,7 @@ Important: When using regular expressions in a query, you must not have more tha
         dry_run_query,
         generate_python_code,
     ],
+    sub_agents=[search_agent],
     before_tool_callback=before_tool_callback,
     after_tool_callback=after_tool_callback,
 )
