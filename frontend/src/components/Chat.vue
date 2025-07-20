@@ -4,14 +4,18 @@
       <div v-for="(message, index) in messages" :key="index" :class="['message', message.sender]">
         {{ message.text }}
       </div>
+      <div v-if="isLoading" class="message bot loading">
+        Typing...
+      </div>
     </div>
     <div class="input-area">
       <input
         v-model="newMessage"
         @keyup.enter="sendMessage"
         placeholder="Type your message..."
+        :disabled="isLoading"
       />
-      <button @click="sendMessage">Send</button>
+      <button @click="sendMessage" :disabled="isLoading">Send</button>
     </div>
   </div>
 </template>
@@ -22,6 +26,7 @@ import { sendMessageToApi, createSession } from '../api';
 
 const messages = ref([]);
 const newMessage = ref('');
+const isLoading = ref(false);
 const currentSessionId = ref(null);
 const appName = "agent"; // Define appName
 const userId = "default-user"; // Define userId
@@ -47,12 +52,15 @@ const sendMessage = async () => {
   const userMessage = newMessage.value;
   newMessage.value = '';
 
+  isLoading.value = true;
   try {
     const apiResponse = await sendMessageToApi(userMessage, appName, userId, currentSessionId.value);
     messages.value.push({ text: apiResponse, sender: 'bot' });
   } catch (error) {
     console.error('Error sending message:', error);
     messages.value.push({ text: 'Error: Could not get a response.', sender: 'bot' });
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
@@ -124,7 +132,9 @@ const sendMessage = async () => {
   transition: background-color 0.3s;
 }
 
-.input-area button:hover {
-  background-color: #218838;
+.message.bot.loading {
+  background-color: #f0f0f0;
+  color: #666;
+  font-style: italic;
 }
 </style>
