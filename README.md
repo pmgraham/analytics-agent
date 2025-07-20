@@ -3,6 +3,9 @@
 A base ReAct agent built with Google's Agent Development Kit (ADK)
 Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack) version `0.9.2`
 
+Get started with the following command:
+`uvx agent-starter-pack create my-awesome-agent` (replace `my-awesome-agent` with your desired agent name)
+
 ## Project Structure
 
 This project is organized as follows:
