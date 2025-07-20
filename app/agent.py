@@ -45,11 +45,11 @@ def after_tool_callback(tool_context: ToolContext, tool, args, tool_response):
 
 def collect_search_sources_callback(callback_context: CallbackContext):
     sources = []
-    for event in callback_context.session.events:
+    for event in callback_context._invocation_context.session.events:
         if event.grounding_metadata and event.grounding_metadata.grounding_chunks:
             for chunk in event.grounding_metadata.grounding_chunks:
-                if chunk.web_uri:
-                    sources.append({"url": chunk.web_uri, "title": chunk.title or chunk.web_uri})
+                if chunk.web and chunk.web.uri:
+                    sources.append({"url": chunk.web.uri, "title": chunk.web.title or chunk.web.uri})
     if sources:
         callback_context.state["search_sources"] = sources
 
