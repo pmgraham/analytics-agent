@@ -56,12 +56,8 @@ def collect_search_sources_callback(callback_context: CallbackContext):
 search_agent = Agent(
     name="search_agent",
     model="gemini-2.5-pro",
-    instruction="""You are a specialized search agent. Your sole purpose is to perform Google web searches when explicitly requested by your parent agent.
-    You must only perform searches for topics directly related to BigQuery or its associated services as defined by your parent agent.
-    Always cite your sources by including the URL of the source in your response.
-    """,
+    instruction="""You are a search agent. You must use the `google_search` tool to answer the user's question. The user's question is in the `request` argument.""",
     tools=[google_search],
-    after_agent_callback=collect_search_sources_callback,
 )
 
 root_agent = Agent(
@@ -115,4 +111,5 @@ Important: When using regular expressions in a query, you must not have more tha
     ],
     before_tool_callback=before_tool_callback,
     after_tool_callback=after_tool_callback,
+    after_agent_callback=collect_search_sources_callback,
 )
