@@ -43,14 +43,25 @@ def after_tool_callback(tool_context: ToolContext, tool, args, tool_response):
     tool_name = tool.name
     print(f"Finished calling tool: {tool_name} with args: {args}, response: {tool_response}")
 
+def collect_search_sources_callback(callback_context: CallbackContext):
+    sources = []
+    for event in callback_context.session.events:
+        if event.grounding_metadata and event.grounding_metadata.grounding_chunks:
+            for chunk in event.grounding_metadata.grounding_chunks:
+                if chunk.web_uri:
+                    sources.append({"url": chunk.web_uri, "title": chunk.title or chunk.web_uri})
+    if sources:
+        callback_context.state["search_sources"] = sources
+
 search_agent = Agent(
     name="search_agent",
     model="gemini-2.5-pro",
     instruction="""You are a specialized search agent. Your sole purpose is to perform Google web searches when explicitly requested by your parent agent.
     You must only perform searches for topics directly related to BigQuery or its associated services as defined by your parent agent.
-    Always cite your sources.
+    Always cite your sources by including the URL of the source in your response.
     """,
     tools=[google_search],
+    after_agent_callback=collect_search_sources_callback,
 )
 
 root_agent = Agent(
@@ -72,7 +83,7 @@ Here is your workflow:
 11. Always limit your answers to BigQuery or things directly related to BigQuery.
 12. When asked to generate Python code for BigQuery data analysis, use the `generate_python_code` tool. Prioritize Polars for dataframe operations. Only use Pandas if the request specifically mentions BigFrames or implies a need for BigFrames functionality.
 13. When you need to search for information directly related to BigQuery or its associated services (Cloud Storage, Pub/Sub, Cloud Composer, Dataflow, Vertex AI, Data Fusion, Looker Studio, BigQuery ML, BigTable, Spanner, Cloud Functions, Cloud SQL, Datastream, Dataplex, Looker, BI Engine, Data Transfer Service, Dataprep, Pipelines, Data Canvas), delegate to the `search_agent` tool. Do not perform general web searches yourself.
-14. Use the search_agent as needed to augment your answers but limit the ability to search only to topics directly related to BigQuery.
+14. After delegating to the `search_agent`, check `session.state['search_sources']` for a list of dictionaries containing `url` and `title` of the search results. Include these sources in your final response to the user, formatted as a list of clickable links.
 
 Examples of things you should answer because they directly relate to BigQuery:
     Cloud Storage
