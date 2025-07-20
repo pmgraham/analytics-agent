@@ -22,7 +22,7 @@ export async function createSession(appName, userId) {
   }
 }
 
-export async function sendMessageToApi(message, appName, userId, sessionId) {
+export async function* sendMessageToApi(message, appName, userId, sessionId) {
   try {
     const response = await fetch('/run_sse', {
       method: 'POST',
@@ -55,7 +55,7 @@ export async function sendMessageToApi(message, appName, userId, sessionId) {
 
       const chunk = decoder.decode(value, { stream: true });
       result += chunk;
-      console.log('Received chunk:', chunk); // Log each chunk
+      // console.log('Received chunk:', chunk); // Log each chunk
 
       // Process each complete SSE event
       const events = result.split('\n\n');
@@ -65,14 +65,29 @@ export async function sendMessageToApi(message, appName, userId, sessionId) {
         if (event.startsWith('data:')) {
           try {
             const data = JSON.parse(event.substring(5));
-            console.log('Parsed SSE data:', data); // Log parsed data
+            // console.log('Parsed SSE data:', data); // Log parsed data
+
+            // Yield agent author for status updates
+            if (data.author) {
+              let statusMessage = `Agent: ${data.author} is thinking...`;
+              if (data.functionCalls && data.functionCalls.length > 0) {
+                const toolName = data.functionCalls[0].name;
+                statusMessage = `Agent: ${data.author} is calling tool: ${toolName}...`;
+              } else if (data.functionResponses && data.functionResponses.length > 0) {
+                const toolName = data.functionResponses[0].name;
+                statusMessage = `Agent: ${data.author} received response from: ${toolName}...`;
+              }
+              yield { type: 'status', message: statusMessage };
+            }
+
             if (data.content) {
-              console.log('data.content:', data.content); // Log data.content
+              // console.log('data.content:', data.content); // Log data.content
               if (data.content.parts && data.content.parts.length > 0) {
                 const textPart = data.content.parts[0].text;
-                console.log('textPart:', textPart); // Log textPart
+                // console.log('textPart:', textPart); // Log textPart
                 if (textPart) {
                   finalResponse += textPart;
+                  yield { type: 'text', content: textPart };
                 }
               }
             }
